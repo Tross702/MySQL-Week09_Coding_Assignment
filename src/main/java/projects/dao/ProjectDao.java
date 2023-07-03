@@ -1,0 +1,61 @@
+package projects.dao;
+
+import java.sql.Connection;
+import provided.util.DaoBase;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.math.BigDecimal;
+import projects.exception.DbException;
+import projects.entity.Project;
+import provided.util.DaoBase;
+
+// Class uses JDBV to perform CRUD operations with project tables. 
+
+public class ProjectDao extends DaoBase {
+
+    private static final String CATEGORY_TABLE = "category";
+    private static final String MATERIAL_TABLE = "material";
+    private static final String PROJECT_TABLE = "project";
+    private static final String PROJECT_CATEGORY_TABLE = "project_category";
+    private static final String STEP_TABLE = "step";
+
+    public Project insertProject(Project project) {
+    	// @formatter:off
+        String sql = "INSERT INTO " + PROJECT_TABLE +
+                     " (project_name, estimated_hours, actual_hours, difficulty, notes) " +
+                     "VALUES (?, ?, ?, ?, ?)";
+        // @formatter:on
+
+     // Start the transaction
+        try (Connection conn = DbConnection.getConnection()) {
+            startTransaction(conn); 
+
+            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                setParameter(stmt, 1, project.getProjectName(), String.class);
+                setParameter(stmt, 2, project.getEstimatedHours(), BigDecimal.class);
+                setParameter(stmt, 3, project.getActualHours(), BigDecimal.class);
+                setParameter(stmt, 4, project.getDifficulty(), Integer.class);
+                setParameter(stmt, 5, project.getNotes(), String.class);
+             // Execute the insert statement
+                stmt.executeUpdate(); // Execute the insert statement
+
+                // Obtain the project ID
+                Integer projectId = getLastInsertId(conn, PROJECT_TABLE);
+                commitTransaction(conn);
+                // Set the project ID in the project object
+                project.setProjectId(projectId);
+                return project;
+             // Roll back the transaction
+            } 
+            catch (Exception e) {
+                rollbackTransaction(conn); 
+                throw new DbException(e);
+          } 
+
+        } 
+        	catch (SQLException e) {
+        		throw new DbException(e);
+        }
+
+	}
+}
